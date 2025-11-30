@@ -4,6 +4,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import BubblePop from "./pages/games/BubblePop";
+import ColorMatch from "./pages/games/ColorMatch";
+import ShapeCollector from "./pages/games/ShapeCollector";
+import FruitCatch from "./pages/games/FruitCatch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -16,7 +20,10 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/games/bubble-pop" element={<BubblePop />} />
+          <Route path="/games/color-match" element={<ColorMatch />} />
+          <Route path="/games/shape-collector" element={<ShapeCollector />} />
+          <Route path="/games/fruit-catch" element={<FruitCatch />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
