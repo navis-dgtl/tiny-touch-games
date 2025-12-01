@@ -1,200 +1,236 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Star } from "lucide-react";
+import { Home, Star, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-type GameObject = {
+type Bubble = {
   id: number;
   x: number;
   y: number;
-  type: "bubble" | "cloud" | "leaf";
-  speed: number;
+  color: string;
+  size: number;
 };
+
+type Particle = {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+};
+
+const bubbleColors = [
+  "bg-coral",
+  "bg-mint",
+  "bg-sunny",
+  "bg-sky",
+  "bg-peach",
+  "bg-lavender",
+];
+
+const encouragingMessages = [
+  "Amazing! 🌟",
+  "Great job! ⭐",
+  "Wonderful! 🎉",
+  "You're a star! ✨",
+  "Fantastic! 🎈",
+  "Keep going! 💫",
+];
 
 const BubblePop = () => {
   const navigate = useNavigate();
-  const [gameObjects, setGameObjects] = useState<GameObject[]>([]);
-  const [stars, setStars] = useState(0);
-  const [strikes, setStrikes] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const [poppedBubbles, setPoppedBubbles] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [score, setScore] = useState(0);
+  const [showMessage, setShowMessage] = useState("");
 
-  const spawnObject = useCallback(() => {
-    const random = Math.random();
-    const type: GameObject["type"] = 
-      random < 0.7 ? "bubble" : random < 0.85 ? "cloud" : "leaf";
-    
-    const newObject: GameObject = {
+  const spawnBubble = useCallback(() => {
+    const newBubble: Bubble = {
       id: Date.now() + Math.random(),
-      x: Math.random() * (window.innerWidth - 80),
-      y: window.innerHeight + 50,
-      type,
-      speed: type === "bubble" ? 2 + Math.random() : 1.5 + Math.random() * 0.5,
+      x: Math.random() * (window.innerWidth - 120) + 20,
+      y: -100,
+      color: bubbleColors[Math.floor(Math.random() * bubbleColors.length)],
+      size: 70 + Math.random() * 30,
     };
-
-    setGameObjects((prev) => [...prev, newObject]);
+    setBubbles((prev) => [...prev, newBubble]);
   }, []);
 
   useEffect(() => {
-    if (gameOver) return;
-
-    const spawnInterval = setInterval(spawnObject, 1000);
+    const spawnInterval = setInterval(spawnBubble, 800);
     return () => clearInterval(spawnInterval);
-  }, [spawnObject, gameOver]);
+  }, [spawnBubble]);
 
   useEffect(() => {
-    if (gameOver) return;
-
     const animationFrame = setInterval(() => {
-      setGameObjects((prev) =>
+      setBubbles((prev) =>
         prev
-          .map((obj) => ({ ...obj, y: obj.y - obj.speed }))
-          .filter((obj) => obj.y > -100)
+          .map((bubble) => ({ ...bubble, y: bubble.y + 2 }))
+          .filter((bubble) => bubble.y < window.innerHeight + 100)
       );
     }, 16);
 
     return () => clearInterval(animationFrame);
-  }, [gameOver]);
+  }, []);
 
-  const handleTap = (obj: GameObject) => {
-    if (obj.type === "bubble") {
-      setPoppedBubbles((prev) => [...prev, { id: obj.id, x: obj.x, y: obj.y }]);
-      setStars((prev) => prev + 1);
-      setGameObjects((prev) => prev.filter((o) => o.id !== obj.id));
-      
-      setTimeout(() => {
-        setPoppedBubbles((prev) => prev.filter((p) => p.id !== obj.id));
-      }, 1000);
-    } else {
-      setStrikes((prev) => {
-        const newStrikes = prev + 1;
-        if (newStrikes >= 3) {
-          setGameOver(true);
-        }
-        return newStrikes;
+  useEffect(() => {
+    const cleanupParticles = setInterval(() => {
+      setParticles([]);
+    }, 1000);
+
+    return () => clearInterval(cleanupParticles);
+  }, []);
+
+  const handleBubblePop = (bubble: Bubble) => {
+    setScore((prev) => {
+      const newScore = prev + 1;
+
+      // Show encouraging message every 5 pops
+      if (newScore % 5 === 0) {
+        const message = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
+        setShowMessage(message);
+        setTimeout(() => setShowMessage(""), 1500);
+      }
+
+      return newScore;
+    });
+
+    // Create particle explosion effect
+    const newParticles: Particle[] = [];
+    for (let i = 0; i < 8; i++) {
+      newParticles.push({
+        id: Date.now() + Math.random(),
+        x: bubble.x + bubble.size / 2,
+        y: bubble.y + bubble.size / 2,
+        color: bubble.color,
       });
-      setGameObjects((prev) => prev.filter((o) => o.id !== obj.id));
     }
-  };
+    setParticles((prev) => [...prev, ...newParticles]);
 
-  const resetGame = () => {
-    setGameObjects([]);
-    setStars(0);
-    setStrikes(0);
-    setGameOver(false);
-    setPoppedBubbles([]);
+    setBubbles((prev) => prev.filter((b) => b.id !== bubble.id));
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-sky to-background overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-b from-sky via-background to-mint overflow-hidden">
       {/* Header */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
         <button
           onClick={() => navigate("/")}
-          className="bg-white/90 rounded-full p-3 shadow-lg"
+          className="bg-white/90 rounded-full p-4 shadow-lg hover:scale-110 transition-transform"
         >
-          <Home className="w-6 h-6 text-primary" />
+          <Home className="w-8 h-8 text-primary" />
         </button>
-        
-        <div className="flex items-center gap-2 bg-white/90 rounded-full px-4 py-2 shadow-lg">
-          <Star className="w-6 h-6 text-star fill-star" />
-          <span className="text-2xl font-bold text-foreground">{stars}</span>
-        </div>
 
-        <div className="flex gap-2">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={`w-8 h-8 rounded-full border-4 border-white ${
-                i < strikes ? "bg-destructive" : "bg-white/50"
-              }`}
-            />
-          ))}
-        </div>
+        <motion.div
+          className="flex items-center gap-3 bg-white/90 rounded-full px-6 py-3 shadow-lg"
+          animate={{ scale: score > 0 && score % 5 === 0 ? [1, 1.2, 1] : 1 }}
+        >
+          <Star className="w-8 h-8 text-star fill-star" />
+          <span className="text-3xl font-bold text-foreground">{score}</span>
+        </motion.div>
       </div>
 
-      {/* Game Objects */}
+      {/* Instructions */}
+      {score === 0 && bubbles.length < 2 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-28 left-1/2 -translate-x-1/2 text-center bg-white/90 rounded-3xl px-8 py-4 shadow-lg"
+        >
+          <p className="text-2xl font-bold text-foreground">Pop the bubbles! 🫧</p>
+        </motion.div>
+      )}
+
+      {/* Encouraging Messages */}
       <AnimatePresence>
-        {gameObjects.map((obj) => (
+        {showMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5, y: 100 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: -50 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
+          >
+            <div className="bg-white/95 rounded-3xl px-12 py-8 shadow-2xl">
+              <p className="text-5xl font-bold text-primary">{showMessage}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bubbles */}
+      <AnimatePresence>
+        {bubbles.map((bubble) => (
           <motion.button
-            key={obj.id}
+            key={bubble.id}
             initial={{ scale: 0 }}
-            animate={{ 
+            animate={{
               scale: 1,
-              x: obj.x,
-              y: obj.y,
+              x: bubble.x,
+              y: bubble.y,
             }}
             exit={{ scale: 0 }}
-            transition={{ type: "spring", stiffness: 300 }}
-            onClick={() => handleTap(obj)}
-            className="absolute w-16 h-16 touch-manipulation"
+            whileTap={{ scale: 0.8 }}
+            onClick={() => handleBubblePop(bubble)}
+            className="absolute touch-manipulation"
             style={{
               left: 0,
               top: 0,
+              width: bubble.size,
+              height: bubble.size,
             }}
           >
-            {obj.type === "bubble" && (
-              <div className="w-full h-full rounded-full bg-bubble border-4 border-white/50 shadow-lg" />
-            )}
-            {obj.type === "cloud" && (
-              <div className="w-full h-12 rounded-full bg-cloud shadow-md" />
-            )}
-            {obj.type === "leaf" && (
-              <div className="w-12 h-16 bg-leaf rounded-full shadow-md transform rotate-45" />
-            )}
+            <div
+              className={`w-full h-full rounded-full ${bubble.color} border-4 border-white/50 shadow-xl flex items-center justify-center`}
+              style={{
+                boxShadow: '0 8px 32px rgba(0,0,0,0.1), inset 0 -8px 16px rgba(255,255,255,0.5)',
+              }}
+            >
+              <Sparkles className="w-1/3 h-1/3 text-white/70" />
+            </div>
           </motion.button>
         ))}
       </AnimatePresence>
 
-      {/* Popped Bubble Stars */}
+      {/* Particle Effects */}
       <AnimatePresence>
-        {poppedBubbles.map((bubble) => (
+        {particles.map((particle, index) => (
           <motion.div
-            key={bubble.id}
-            initial={{ scale: 1, y: bubble.y, x: bubble.x, opacity: 1 }}
-            animate={{ scale: 2, y: bubble.y - 100, opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
-            className="absolute pointer-events-none"
-          >
-            <Star className="w-8 h-8 text-star fill-star" />
-          </motion.div>
+            key={particle.id}
+            initial={{ scale: 1, x: particle.x, y: particle.y, opacity: 1 }}
+            animate={{
+              scale: 0,
+              x: particle.x + Math.cos((index / 8) * Math.PI * 2) * 60,
+              y: particle.y + Math.sin((index / 8) * Math.PI * 2) * 60,
+              opacity: 0,
+            }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className={`absolute w-6 h-6 rounded-full ${particle.color} pointer-events-none`}
+            style={{ left: 0, top: 0 }}
+          />
         ))}
       </AnimatePresence>
 
-      {/* Game Over Modal */}
-      <AnimatePresence>
-        {gameOver && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/50 flex items-center justify-center z-20"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-3xl p-8 sm:p-12 shadow-2xl text-center max-w-md mx-4"
-            >
-              <h2 className="text-4xl sm:text-5xl font-bold text-primary mb-4">
-                Great Job! 🎉
-              </h2>
-              <div className="flex items-center justify-center gap-3 mb-8">
-                <Star className="w-12 h-12 text-star fill-star" />
-                <span className="text-5xl font-bold text-foreground">{stars}</span>
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={resetGame}
-                className="bg-primary text-white text-2xl font-bold py-4 px-8 rounded-2xl shadow-lg w-full"
-              >
-                Play Again! 🎈
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Floating sparkles decoration */}
+      {[...Array(6)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-4xl pointer-events-none"
+          initial={{
+            x: Math.random() * window.innerWidth,
+            y: window.innerHeight + 50,
+            opacity: 0.3,
+          }}
+          animate={{
+            y: -100,
+            x: Math.random() * window.innerWidth,
+          }}
+          transition={{
+            duration: 15 + Math.random() * 10,
+            repeat: Infinity,
+            delay: i * 2,
+          }}
+        >
+          ⭐
+        </motion.div>
+      ))}
     </div>
   );
 };
